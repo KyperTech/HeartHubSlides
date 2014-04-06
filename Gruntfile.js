@@ -1,137 +1,84 @@
-/* global module:false */
 module.exports = function(grunt) {
-	var port = grunt.option('port') || 8000;
-	// Project configuration
-	grunt.initConfig({
-		pkg: grunt.file.readJSON('package.json'),
-		meta: {
-			banner:
-				'/*!\n' +
-				' * reveal.js <%= pkg.version %> (<%= grunt.template.today("yyyy-mm-dd, HH:MM") %>)\n' +
-				' * http://lab.hakim.se/reveal-js\n' +
-				' * MIT licensed\n' +
-				' *\n' +
-				' * Copyright (C) 2014 Hakim El Hattab, http://hakim.se\n' +
-				' */'
-		},
+    grunt.registerTask('watch', ['watch']);
+    grunt.registerTask('dist', ['shell:home']);
+    grunt.registerTask('test', ['shell:test']);
+    // Project configuration.
+    grunt.initConfig({
+        pkg: grunt.file.readJSON('package.json'),
+        //Trying for storing variables else where,
+        connect: {
+            server: {
+                options: {
+                    port: 8080,
+                    //keepalive: true, keeping grunt running
+                    //livereload:true,
+                    base: '.',
+                    open: {
+                        target: 'http://localhost:8080',
+                        appName: 'Google Chrome',
+                    }
+                }
+            }
+        },
+        less: {
+            style: {
+                files: {
+                    "css/styles.css": "less/styles.less"
+                },
+            }
+        },
+        watch: {
+            less: {
+                files: ["app/less/*.less"],
+                tasks: ["less:style"],
+                options:{
+                    //debounceDelay:1000,
+                    livereload: true
+                }
+            },
+            html: {
+                files: ['app/index.html'],
+                options: {
+                    livereload: true
+                }
+            }
+        },
+        shell:{
+            home:{
+                command:"s3cmd sync --exclude './node_modules/' --exclude '*.less' --exclude './app/less/' --exclude '.DS_Store' --exclude '.buildignore' --exclude '.htaccess' --acl-public . s3://hearthub-presentation"
+            },
+            test:{
+                command:"s3cmd sync --exclude './app/bower_components/' --exclude '*.less' --exclude './app/less/' --exclude '.DS_Store' --exclude '.buildignore' --exclude '.htaccess' --acl-public . s3://kyper-test"
+            },
+            options:{
+                stdout:true
+            }
+        }
 
-		qunit: {
-			files: [ 'test/*.html' ]
-		},
+    });
 
-		uglify: {
-			options: {
-				banner: '<%= meta.banner %>\n'
-			},
-			build: {
-				src: 'js/reveal.js',
-				dest: 'js/reveal.min.js'
-			}
-		},
+    //Plugin for "watch"
+    grunt.loadNpmTasks('grunt-contrib-watch');
 
-		cssmin: {
-			compress: {
-				files: {
-					'css/reveal.min.css': [ 'css/reveal.css' ]
-				}
-			}
-		},
+    //Connect plugin
+    grunt.loadNpmTasks('grunt-contrib-connect');
 
-		sass: {
-			main: {
-				files: {
-					'css/theme/default.css': 'css/theme/source/default.scss',
-					'css/theme/beige.css': 'css/theme/source/beige.scss',
-					'css/theme/night.css': 'css/theme/source/night.scss',
-					'css/theme/serif.css': 'css/theme/source/serif.scss',
-					'css/theme/simple.css': 'css/theme/source/simple.scss',
-					'css/theme/sky.css': 'css/theme/source/sky.scss',
-					'css/theme/moon.css': 'css/theme/source/moon.scss',
-					'css/theme/solarized.css': 'css/theme/source/solarized.scss',
-					'css/theme/blood.css': 'css/theme/source/blood.scss'
-				}
-			}
-		},
+    //Open plugin
+    grunt.loadNpmTasks('grunt-open');
 
-		jshint: {
-			options: {
-				curly: false,
-				eqeqeq: true,
-				immed: true,
-				latedef: true,
-				newcap: true,
-				noarg: true,
-				sub: true,
-				undef: true,
-				eqnull: true,
-				browser: true,
-				expr: true,
-				globals: {
-					head: false,
-					module: false,
-					console: false,
-					unescape: false
-				}
-			},
-			files: [ 'Gruntfile.js', 'js/reveal.js' ]
-		},
+    //Watch files for reload
+    grunt.loadNpmTasks('grunt-contrib-watch');
 
-		connect: {
-			server: {
-				options: {
-					port: port,
-					base: '.'
-				}
-			}
-		},
+    //Less Plugin
+    grunt.loadNpmTasks('grunt-contrib-less');
 
-		zip: {
-			'reveal-js-presentation.zip': [
-				'index.html',
-				'css/**',
-				'js/**',
-				'lib/**',
-				'images/**',
-				'plugin/**'
-			]
-		},
+    //Grunt-Shell Plugin (for creating and pushing to production)
+    grunt.loadNpmTasks('grunt-shell');
 
-		watch: {
-			main: {
-				files: [ 'Gruntfile.js', 'js/reveal.js', 'css/reveal.css' ],
-				tasks: 'default'
-			},
-			theme: {
-				files: [ 'css/theme/source/*.scss', 'css/theme/template/*.scss' ],
-				tasks: 'themes'
-			}
-		}
+    // Default task(s).
+    grunt.registerTask('default', ['connect', 'less', 'watch']);
 
-	});
-
-	// Dependencies
-	grunt.loadNpmTasks( 'grunt-contrib-qunit' );
-	grunt.loadNpmTasks( 'grunt-contrib-jshint' );
-	grunt.loadNpmTasks( 'grunt-contrib-cssmin' );
-	grunt.loadNpmTasks( 'grunt-contrib-uglify' );
-	grunt.loadNpmTasks( 'grunt-contrib-watch' );
-	grunt.loadNpmTasks( 'grunt-contrib-sass' );
-	grunt.loadNpmTasks( 'grunt-contrib-connect' );
-	grunt.loadNpmTasks( 'grunt-zip' );
-
-	// Default task
-	grunt.registerTask( 'default', [ 'jshint', 'cssmin', 'uglify', 'qunit' ] );
-
-	// Theme task
-	grunt.registerTask( 'themes', [ 'sass' ] );
-
-	// Package presentation to archive
-	grunt.registerTask( 'package', [ 'default', 'zip' ] );
-
-	// Serve presentation locally
-	grunt.registerTask( 'serve', [ 'connect', 'watch' ] );
-
-	// Run tests
-	grunt.registerTask( 'test', [ 'jshint', 'qunit' ] );
-
+    grunt.registerTask('serve', ['connect'], function() {
+        grunt.task.run('connect');
+    });
 };
